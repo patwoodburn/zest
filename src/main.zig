@@ -2,6 +2,7 @@ const std = @import("std");
 const CPU = @import("cpu.zig");
 const Bus = @import("bus.zig").Bus;
 const PPU = @import("ppu.zig").PPU;
+const clap = @import("clap");
 const sdl = @cImport({
     @cInclude("SDL2/SDL.h");
 });
@@ -28,6 +29,22 @@ const NES = struct {
 };
 
 pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+
+    const params = comptime clap.parseParamsComptime(
+        \\-h, --help     Display this help and exit.
+        \\-v, --version  Output version information and exit.
+        \\
+    );
+
+    var res = try clap.parse(clap.Help, &params, clap.parsers.default, .{
+        .allocator = gpa.allocator(),
+    });
+    defer res.deinit();
+    if (res.args.help != 0) {
+        return clap.help(std.io.getStdErr().writer(), clap.Help, &params, .{});
+    }
     var memory: [memory_size]u8 = undefined;
     @memset(&memory, 0);
     const result = sdl.SDL_Init(sdl.SDL_INIT_EVERYTHING);
